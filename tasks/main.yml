@@ -1,0 +1,59 @@
+---
+# tasks file for hostname
+
+- name: Check variables
+  assert:
+    that:
+      - hostname_name is defined
+      - hostname_name | type_debug == 'AnsibleUnicode'
+      - hostname_name | length > 0
+      - (hostname_hosts is not defined) or hostname_hosts | type_debug == 'list'
+      - (hostname_remove_127_0_1_1 is not defined) or hostname_remove_127_0_1_1 | type_debug == 'bool'
+    quiet: yes
+
+- name: Check hostname_hosts list items
+  assert:
+    that:
+      - item.ip is defined
+      - item.ip | type_debug == 'str'
+      - item.ip | ipaddr != false
+      - item.alias is defined
+      - item.alias | type_debug == 'str'
+      - item.alias | length > 0
+    quiet: yes
+  when: hostname_hosts is defined
+  loop: "{{ hostname_hosts }}"
+
+- name: Set hostname
+  vars:
+    # Errors can be generated in containers although the command works
+    igerrors: "{{ true if ansible_virtualization_type in _container_types else false }}"
+  hostname:
+    name: "{{ hostname_name }}"
+  ignore_errors: "{{ igerrors }}"
+
+# Updating /etc/hosts is not supported in containers
+# https://github.com/moby/moby/issues/22281
+- name: Update /etc/hosts
+  block:
+    - name: Update /etc/hosts entry for 127.0.1.1 if required
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^127.0.1.1'
+        line: '127.0.1.1 {{ hostname_name }}'
+        mode: '0644'
+        owner: root
+        group: root
+        state: "{{ 'absent' if hostname_remove_127_0_1_1 | default(false) else 'present' }}"
+
+    - name: Set /etc/hosts entries
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^{{ item.ip }}\s+'
+        line: '{{ item.ip }} {{ item.alias }}'
+        state: present
+        mode: '0644'
+        owner: root
+        group: root
+      loop: "{{ hostname_hosts }}"
+  when: ansible_virtualization_type not in _container_types
