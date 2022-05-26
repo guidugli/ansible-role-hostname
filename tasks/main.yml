@@ -2,7 +2,7 @@
 # tasks file for hostname
 
 - name: Check variables
-  assert:
+  ansible.builtin.assert:
     that:
       - hostname_name is defined
       - hostname_name | type_debug == 'AnsibleUnicode'
@@ -12,7 +12,7 @@
     quiet: yes
 
 - name: Check hostname_hosts list items
-  assert:
+  ansible.builtin.assert:
     that:
       - item.ip is defined
       - item.ip | type_debug == 'str'
@@ -26,18 +26,18 @@
 
 - name: Set hostname
   vars:
-    # Errors can be generated in containers although the command works
+    # Containers are complicated.
     igerrors: "{{ true if ansible_virtualization_type in _container_types else false }}"
-  hostname:
+  ansible.builtin.hostname:
     name: "{{ hostname_name }}"
-  ignore_errors: "{{ igerrors }}"
+  ignore_errors: "{{ igerrors }}" # noqa ignore-errors
 
 # Updating /etc/hosts is not supported in containers
 # https://github.com/moby/moby/issues/22281
 - name: Update /etc/hosts
   block:
     - name: Update /etc/hosts entry for 127.0.1.1 if required
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/hosts
         regexp: '^127.0.1.1'
         line: '127.0.1.1 {{ hostname_name }}'
@@ -47,7 +47,7 @@
         state: "{{ 'absent' if hostname_remove_127_0_1_1 | default(false) else 'present' }}"
 
     - name: Set /etc/hosts entries
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/hosts
         regexp: '^{{ item.ip }}\s+'
         line: '{{ item.ip }} {{ item.alias }}'
