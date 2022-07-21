@@ -27,10 +27,10 @@
 - name: Set hostname
   vars:
     # Containers are complicated.
-    not_virtual: "{{ false if ansible_virtualization_type in _container_types else true }}"
+    not_container: "{{ false if ansible_virtualization_type in _container_types else true }}"
   ansible.builtin.hostname:
     name: "{{ hostname_name }}"
-  when: "{{ not_virtual }}"
+  when: not_container
 
 # Updating /etc/hosts is not supported in containers
 # https://github.com/moby/moby/issues/22281
