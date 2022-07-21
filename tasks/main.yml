@@ -27,10 +27,10 @@
 - name: Set hostname
   vars:
     # Containers are complicated.
-    igerrors: "{{ true if ansible_virtualization_type in _container_types else false }}"
+    not_virtual: "{{ false if ansible_virtualization_type in _container_types else true }}"
   ansible.builtin.hostname:
     name: "{{ hostname_name }}"
-  ignore_errors: "{{ igerrors }}" # noqa ignore-errors
+  when: "{{ not_virtual }}"
 
 # Updating /etc/hosts is not supported in containers
 # https://github.com/moby/moby/issues/22281
