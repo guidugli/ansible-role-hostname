@@ -35,6 +35,7 @@
 # Updating /etc/hosts is not supported in containers
 # https://github.com/moby/moby/issues/22281
 - name: Update /etc/hosts
+  when: ansible_virtualization_type not in _container_types
   block:
     - name: Update /etc/hosts entry for 127.0.1.1 if required
       ansible.builtin.lineinfile:
@@ -56,4 +57,3 @@
         owner: root
         group: root
       loop: "{{ hostname_hosts }}"
-  when: ansible_virtualization_type not in _container_types
