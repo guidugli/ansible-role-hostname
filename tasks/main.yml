@@ -5,7 +5,7 @@
   ansible.builtin.assert:
     that:
       - hostname_name is defined
-      - hostname_name | type_debug == 'AnsibleUnicode'
+      - hostname_name is string
       - hostname_name | length > 0
       - (hostname_hosts is not defined) or hostname_hosts | type_debug == 'list'
       - (hostname_remove_127_0_1_1 is not defined) or hostname_remove_127_0_1_1 | type_debug == 'bool'
@@ -15,10 +15,10 @@
   ansible.builtin.assert:
     that:
       - item.ip is defined
-      - item.ip | type_debug == 'str'
+      - item.ip is string
       - item.ip | ipaddr != false
       - item.alias is defined
-      - item.alias | type_debug == 'str'
+      - item.alias is string
       - item.alias | length > 0
     quiet: yes
   when: hostname_hosts is defined
