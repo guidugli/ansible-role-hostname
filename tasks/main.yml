@@ -1,17 +1,20 @@
 ---
 # tasks file for hostname
 
-- name: Check variables
+- name: Validate role input variables
   ansible.builtin.assert:
     that:
       - hostname_name is defined
       - hostname_name is string
       - hostname_name | length > 0
-      - (hostname_hosts is not defined) or hostname_hosts | type_debug == 'list'
-      - (hostname_remove_127_0_1_1 is not defined) or hostname_remove_127_0_1_1 | type_debug == 'bool'
-    quiet: yes
+      - (hostname_hosts | default([])) | type_debug == 'list'
+      - (hostname_remove_127_0_1_1 | default(false)) | type_debug == 'bool'
+    quiet: true
+  tags:
+    - hostname
+    - validate
 
-- name: Check hostname_hosts list items
+- name: Validate hostname_hosts list items
   ansible.builtin.assert:
     that:
       - item.ip is defined
@@ -20,24 +23,30 @@
       - item.alias is defined
       - item.alias is string
       - item.alias | length > 0
-    quiet: yes
-  when: hostname_hosts is defined
-  loop: "{{ hostname_hosts }}"
+    quiet: true
+  loop: "{{ hostname_hosts | default([]) }}"
+  when: (hostname_hosts | default([])) | length > 0
+  tags:
+    - hostname
+    - validate
 
 - name: Set hostname
-  vars:
-    # Containers are complicated.
-    not_container: "{{ false if ansible_virtualization_type in _container_types else true }}"
   ansible.builtin.hostname:
     name: "{{ hostname_name }}"
-  when: not_container
+  when: (ansible_facts['virtualization_type'] | default('')) not in _container_types
+  tags:
+    - hostname
+    - config
 
-# Updating /etc/hosts is not supported in containers
-# https://github.com/moby/moby/issues/22281
+# Updating /etc/hosts is not supported in containers.
+# See: https://github.com/moby/moby/issues/22281
 - name: Update /etc/hosts
-  when: ansible_virtualization_type not in _container_types
+  when: (ansible_facts['virtualization_type'] | default('')) not in _container_types
+  tags:
+    - hostname
+    - config
   block:
-    - name: Update /etc/hosts entry for 127.0.1.1 if required
+    - name: Manage 127.0.1.1 entry in /etc/hosts
       ansible.builtin.lineinfile:
         path: /etc/hosts
         regexp: '^127.0.1.1'
@@ -46,8 +55,11 @@
         owner: root
         group: root
         state: "{{ 'absent' if hostname_remove_127_0_1_1 | default(false) else 'present' }}"
+      tags:
+        - hostname
+        - config
 
-    - name: Set /etc/hosts entries
+    - name: Manage additional /etc/hosts entries
       ansible.builtin.lineinfile:
         path: /etc/hosts
         regexp: '^{{ item.ip }}\s+'
@@ -56,5 +68,8 @@
         mode: '0644'
         owner: root
         group: root
-      loop: "{{ hostname_hosts }}"
-      when: hostname_hosts is defined
+      loop: "{{ hostname_hosts | default([]) }}"
+      when: (hostname_hosts | default([])) | length > 0
+      tags:
+        - hostname
+        - config

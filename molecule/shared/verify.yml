@@ -1,5 +1,63 @@
 ---
-- name: Verify audit role
+- name: Verify hostname role
   hosts: all
   gather_facts: true
+  vars:
+    hostname_name: myserver
+    hostname_remove_127_0_1_1: true
+    hostname_hosts:
+      - ip: 1.2.3.4
+        alias: dev1 dev1.dom.local
+    _container_types:
+      - docker
+      - podman
+      - lxc
+      - containerd
+      - container
   tasks:
+    - name: Capture current hostname
+      ansible.builtin.set_fact:
+        current_hostname: "{{ ansible_facts['hostname'] }}"
+      tags:
+        - hostname
+        - validate
+    
+    - name: Assert hostname is set
+      ansible.builtin.assert:
+        that:
+          - current_hostname is defined
+          - current_hostname | length > 0
+      tags:
+        - hostname
+        - validate
+
+    - name: Read /etc/hosts
+      ansible.builtin.slurp:
+        src: /etc/hosts
+      register: hosts_file
+      tags:
+        - hostname
+        - validate
+
+
+    - name: Verify container execution path
+      ansible.builtin.assert:
+        that:
+          - current_hostname is defined
+          - hostname_name is defined
+          - current_hostname != hostname_name
+      tags:
+        - hostname
+        - validate
+
+    - name: Verify non-container execution path
+      ansible.builtin.assert:
+        that:
+          - hostname_result.stdout == hostname_name
+          - "'127.0.1.1 ' ~ hostname_name not in (hosts_file.content | b64decode)"
+          - "'1.2.3.4 dev1 dev1.dom.local' in (hosts_file.content | b64decode)"
+        quiet: true
+      when: (ansible_facts['virtualization_type'] | default('')) not in _container_types
+      tags:
+        - hostname
+        - validate

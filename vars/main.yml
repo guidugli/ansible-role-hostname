@@ -1,3 +1,7 @@
 ---
-
-_container_types: ['docker', 'podman', 'lxc', 'containerd', 'container']
+_container_types:
+  - docker
+  - podman
+  - lxc
+  - containerd
+  - container

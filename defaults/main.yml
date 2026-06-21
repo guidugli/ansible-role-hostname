@@ -1,9 +1,7 @@
 ---
 # defaults file for hostname
 
+hostname_remove_127_0_1_1: false
+hostname_hosts: []
+
 # hostname_name: myserver
-
-# hostname_remove_127_0_1_1: yes
-
-# hostname_hosts:
-#  - { ip: 1.2.3.4, alias: 'dev1 dev1.dom.local' }

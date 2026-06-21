@@ -9,8 +9,7 @@ galaxy_info:
   author: guidugli
   company: Creuzo Tech
   description: >-
-    Install and configure Linux auditd, deploy reusable audit rules, and keep
-    release metadata aligned with the shared Molecule platform matrix.
+    Set the system hostname and manage /etc/hosts entries on Linux hosts.
   license: MIT
   min_ansible_version: '2.14'
   platforms:
@@ -26,12 +25,7 @@ galaxy_info:
         - "trixie"
         - "bookworm"
   galaxy_tags:
-    - audit
-    - auditd
+    - hostname
+    - networking
+    - system
     - linux
-    - security
-    - compliance
-    - hardening
-    - logging
-    - cis
-    - monitoring
