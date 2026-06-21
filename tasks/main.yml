@@ -25,7 +25,6 @@
   loop: "{{ hostname_hosts }}"
 
 - name: Set hostname
-  become: yes
   vars:
     # Containers are complicated.
     not_container: "{{ false if ansible_virtualization_type in _container_types else true }}"
@@ -36,7 +35,6 @@
 # Updating /etc/hosts is not supported in containers
 # https://github.com/moby/moby/issues/22281
 - name: Update /etc/hosts
-  become: yes
   when: ansible_virtualization_type not in _container_types
   block:
     - name: Update /etc/hosts entry for 127.0.1.1 if required
@@ -60,4 +58,3 @@
         group: root
       loop: "{{ hostname_hosts }}"
       when: hostname_hosts is defined
-  become: yes

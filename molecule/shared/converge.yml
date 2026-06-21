@@ -1,0 +1,12 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: true
+  become: false
+  vars:
+    hostname_name: myserver
+    hostname_remove_127_0_1_1: yes
+    hostname_hosts:
+      - { ip: 1.2.3.4, alias: 'dev1 dev1.dom.local' }
+  roles:
+    - role: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
