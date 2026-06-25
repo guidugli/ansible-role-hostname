@@ -21,7 +21,7 @@
       tags:
         - hostname
         - validate
-    
+
     - name: Assert hostname is set
       ansible.builtin.assert:
         that:
