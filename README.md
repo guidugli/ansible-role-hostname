@@ -5,22 +5,37 @@
 
 # Ansible Role: hostname
 
-Set the system hostname and manage `/etc/hosts` entries on Linux hosts.
+Set the system hostname and manage selected `/etc/hosts` entries on Linux hosts. The role is intentionally privilege-neutral, skips hostname and hosts-file mutation in known container runtimes, and keeps all public inputs documented in both defaults and argument specs.
 
 ## Requirements
 
-- A supported Linux host running on bare metal or a virtual machine.
-- Facts must be gathered before the role runs.
-- Elevated privileges are required to change the hostname and modify `/etc/hosts`.
-- Containerized targets are detected and skipped because hostname changes and `/etc/hosts` management are not reliable in that execution model.
+- Ansible Core 2.14 or newer according to role metadata.
+- Linux target with gathered facts before the role runs.
+- External privilege escalation for real hosts because changing the hostname and editing `/etc/hosts` normally require root-level permissions.
+- The `containers.podman` collection, version `>=1.10.0`, for the included Molecule container scenarios.
+
+## Features
+
+- Validates the required hostname and optional hosts-file entries before making changes.
+- Sets the runtime and persistent hostname with `ansible.builtin.hostname` on non-container hosts.
+- Optionally removes the `127.0.1.1` hosts-file entry when `hostname_remove_127_0_1_1` is `true`.
+- Optionally manages deterministic additional `/etc/hosts` entries from `hostname_hosts`.
+- Skips hostname and `/etc/hosts` changes in known container runtimes to avoid unreliable container behavior.
+- Provides shared Molecule converge and verify playbooks used by both default and systemd scenarios.
+
+## Supported platforms
+
+The role metadata lists Fedora, Ubuntu, and Debian. The bundled shared platform matrix currently includes Ubuntu 26.04 and 24.04, Debian 13 and 12, and Fedora 44 and 43.
 
 ## Variables
 
-| Variable | Type | Default | Description |
-| --- | --- | --- | --- |
-| `hostname_name` | `str` | _required_ | Hostname to configure on the target host. |
-| `hostname_remove_127_0_1_1` | `bool` | `false` | Remove any `/etc/hosts` entry that starts with `127.0.1.1`. |
-| `hostname_hosts` | `list[dict]` | `[]` | Additional `/etc/hosts` entries to enforce. Each item requires `ip` and `alias`. |
+All public inputs are defined in `defaults/main.yml` and mirrored in `meta/argument_specs.yml`.
+
+| Variable | Type | Default | Required | Description |
+| --- | --- | --- | --- | --- |
+| `hostname_name` | `str` | No default | Yes | Hostname to configure on the target host. Provide a non-empty string such as `app01` or `app01.example.com`. |
+| `hostname_remove_127_0_1_1` | `bool` | `false` | No | When `false`, the role ensures `127.0.1.1 {{ hostname_name }}` exists. When `true`, the role removes entries that begin with `127.0.1.1`. |
+| `hostname_hosts` | `list[dict]` | `[]` | No | Additional `/etc/hosts` records to enforce. Each item requires `ip` and `alias`; `alias` may contain one or more host aliases separated by spaces. |
 
 Example variable structure:
 
@@ -49,9 +64,9 @@ hostname_hosts:
     - role: guidugli.hostname
 ```
 
-## Molecule testing
+## Molecule testing instructions
 
-The repository uses the shared Molecule converge and verify playbooks referenced by both the default and systemd scenarios.
+The repository uses shared Molecule converge and verify playbooks referenced by both the default and systemd scenarios.
 
 ```bash
 python3 -m venv .venv
@@ -64,11 +79,24 @@ molecule test -s systemd
 
 ## Execution notes
 
-- **Privilege model:** the role never sets `become`; callers must provide privilege externally when running against real hosts.
-- **Container behavior:** when `ansible_facts['virtualization_type']` identifies a container runtime, the role skips hostname and `/etc/hosts` changes.
-- **Systemd behavior:** the role itself does not manage services, but the repository includes a dedicated systemd Molecule scenario for template-aligned testing.
-- **Molecule coverage:** the shipped Molecule scenarios run in Podman containers, so the verify playbook checks the container skip path there; real hostname changes are exercised on non-container targets.
+- **Privilege model:** the role never declares `become`, `become_user`, or `become_method`. Use `become: true` at the play, inventory, or automation-controller level for real hosts where hostname and `/etc/hosts` changes require elevated privileges.
+- **Container behavior:** when `ansible_facts['virtualization_type']` is one of the known container values, hostname and `/etc/hosts` mutation tasks are skipped. Molecule containers generally execute as root and do not require role-level privilege escalation.
+- **Systemd behavior:** the role does not manage services or unit files. The systemd Molecule scenario is retained from the template so the role continues to exercise the repository-standard scenario layout.
+- **Idempotency:** the role uses Ansible modules, deterministic lines, and read-only validation tasks so a second run should report no changes after the desired state is reached.
+
+## Release workflow
+
+Generated metadata and inventories are maintained by the repository generator scripts. Refresh and release with:
+
+```bash
+./scripts/update_release_metadata.sh
+./scripts/release.sh --version v1.2.0 --message "Release v1.2.0"
+```
 
 ## License
 
 MIT
+
+## Author
+
+Carlos Guidugli

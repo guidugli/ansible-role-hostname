@@ -10,3 +10,6 @@
         alias: dev1 dev1.dom.local
   roles:
     - role: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}"
+      tags:
+        - hostname
+        - config

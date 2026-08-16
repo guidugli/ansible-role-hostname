@@ -19,10 +19,12 @@
     that:
       - item.ip is defined
       - item.ip is string
-      - item.ip | ipaddr != false
+      - item.ip | length > 0
+      - item.ip is not search('\\s')
       - item.alias is defined
       - item.alias is string
       - item.alias | length > 0
+      - item.alias is not search('^\\s|\\s$')
     quiet: true
   loop: "{{ hostname_hosts | default([]) }}"
   when: (hostname_hosts | default([])) | length > 0
@@ -49,7 +51,7 @@
     - name: Manage 127.0.1.1 entry in /etc/hosts
       ansible.builtin.lineinfile:
         path: /etc/hosts
-        regexp: '^127.0.1.1'
+        regexp: '^127\.0\.1\.1\s+'
         line: '127.0.1.1 {{ hostname_name }}'
         mode: '0644'
         owner: root
@@ -62,7 +64,7 @@
     - name: Manage additional /etc/hosts entries
       ansible.builtin.lineinfile:
         path: /etc/hosts
-        regexp: '^{{ item.ip }}\s+'
+        regexp: '^{{ item.ip | regex_escape }}\s+'
         line: '{{ item.ip }} {{ item.alias }}'
         state: present
         mode: '0644'

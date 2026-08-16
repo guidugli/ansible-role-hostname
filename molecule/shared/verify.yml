@@ -15,37 +15,56 @@
       - containerd
       - container
   tasks:
-    - name: Capture current hostname
+    - name: Determine container execution path
       ansible.builtin.set_fact:
-        current_hostname: "{{ ansible_facts['hostname'] }}"
+        hostname_is_container: "{{ (ansible_facts['virtualization_type'] | default('')) in _container_types }}"
+      changed_when: false
       tags:
         - hostname
         - validate
 
-    - name: Assert hostname is set
+    - name: Capture current hostname fact
+      ansible.builtin.set_fact:
+        current_hostname: "{{ ansible_facts['hostname'] }}"
+      changed_when: false
+      tags:
+        - hostname
+        - validate
+
+    - name: Assert hostname fact is available
       ansible.builtin.assert:
         that:
           - current_hostname is defined
           - current_hostname | length > 0
+        quiet: true
       tags:
         - hostname
         - validate
 
-    - name: Read /etc/hosts
+    - name: Verify container execution path skipped host identity changes
+      ansible.builtin.assert:
+        that:
+          - current_hostname != hostname_name
+        quiet: true
+      when: hostname_is_container | bool
+      tags:
+        - hostname
+        - validate
+
+    - name: Read configured hostname on non-container hosts
+      ansible.builtin.command: hostname
+      register: hostname_result
+      changed_when: false
+      when: not hostname_is_container | bool
+      tags:
+        - hostname
+        - validate
+
+    - name: Read /etc/hosts on non-container hosts
       ansible.builtin.slurp:
         src: /etc/hosts
       register: hosts_file
-      tags:
-        - hostname
-        - validate
-
-
-    - name: Verify container execution path
-      ansible.builtin.assert:
-        that:
-          - current_hostname is defined
-          - hostname_name is defined
-          - current_hostname != hostname_name
+      when: not hostname_is_container | bool
       tags:
         - hostname
         - validate
@@ -57,7 +76,7 @@
           - "'127.0.1.1 ' ~ hostname_name not in (hosts_file.content | b64decode)"
           - "'1.2.3.4 dev1 dev1.dom.local' in (hosts_file.content | b64decode)"
         quiet: true
-      when: (ansible_facts['virtualization_type'] | default('')) not in _container_types
+      when: not hostname_is_container | bool
       tags:
         - hostname
         - validate
